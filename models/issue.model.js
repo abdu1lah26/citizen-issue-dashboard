@@ -72,3 +72,94 @@ export const updateIssueStatus = async (issueId, newStatus) => {
 
     return result.rows[0];
 };
+
+export const insertIssueStatusHistory = async (
+    issueId,
+    oldStatus,
+    newStatus,
+    changedBy,
+    remarks
+) => {
+    const query = `
+    INSERT INTO issue_status_history
+    (issue_id, old_status, new_status, changed_by, remarks)
+    VALUES ($1, $2, $3, $4, $5)
+  `;
+
+    await pool.query(query, [
+        issueId,
+        oldStatus,
+        newStatus,
+        changedBy,
+        remarks,
+    ]);
+};
+
+export const getIssueHistory = async (issueId) => {
+    const query = `
+    SELECT 
+      ish.id,
+      ish.old_status,
+      ish.new_status,
+      ish.remarks,
+      ish.changed_at,
+      u.full_name AS changed_by_name
+    FROM issue_status_history ish
+    LEFT JOIN users u
+      ON ish.changed_by = u.id
+    WHERE ish.issue_id = $1
+    ORDER BY ish.changed_at ASC
+  `;
+
+    const result = await pool.query(query, [issueId]);
+
+    return result.rows;
+};
+
+export const getIssuesByDepartment = async (departmentId) => {
+  const query = `
+    SELECT *
+    FROM issues
+    WHERE department_id = $1
+    ORDER BY created_at DESC
+  `;
+
+  const result = await pool.query(query, [departmentId]);
+
+  return result.rows;
+};
+
+export const getUserDepartments = async (userId) => {
+  const query = `
+    SELECT department_id
+    FROM user_departments
+    WHERE user_id = $1
+  `;
+
+  const result = await pool.query(query, [userId]);
+
+  return result.rows.map(row => row.department_id);
+};
+
+export const getDepartmentPerformance = async (departmentId) => {
+  const query = `
+    SELECT
+      COUNT(*) AS total_issues,
+
+      COUNT(*) FILTER (WHERE status = 'resolved') AS resolved_issues,
+
+      COUNT(*) FILTER (WHERE status != 'resolved') AS pending_issues,
+
+      AVG(
+        EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600
+      ) FILTER (WHERE status = 'resolved') 
+      AS avg_resolution_hours
+
+    FROM issues
+    WHERE department_id = $1
+  `;
+
+  const result = await pool.query(query, [departmentId]);
+
+  return result.rows[0];
+};
