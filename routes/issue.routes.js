@@ -1,12 +1,14 @@
 import express from "express";
 import {
     reportIssue,
-    getMyIssues,
-    getIssueDetails,
-    changeIssueStatus,
-    getIssueTimeline,
-    getDepartmentIssues,
-    getDepartmentPerformanceStats
+  getMyIssues,
+  getIssueDetails,
+  changeIssueStatus,
+  getIssueTimeline,
+  getDepartmentIssues,
+  getDepartmentPerformanceStats,
+  getDashboardOverview,
+  getOverdueIssuesList
 } from "../controllers/issue.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 
@@ -20,6 +22,12 @@ router.get("/my", authenticate, getMyIssues);
 
 // Admin can change issue status
 router.patch("/:id/status", authenticate, changeIssueStatus);
+
+// Get list of overdue issues (Admin or Department Head)
+router.get("/dashboard/overdue", authenticate, getOverdueIssuesList);
+
+// Get global dashboard stats (Admin only)
+router.get("/dashboard/overview", authenticate, getDashboardOverview);
 
 // Get performance stats for a department (Admin or Department Head)
 router.get("/department/:departmentId/performance", authenticate, getDepartmentPerformanceStats);

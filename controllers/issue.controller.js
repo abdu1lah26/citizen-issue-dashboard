@@ -5,7 +5,12 @@ import {
     getIssueHistory,
     getIssuesByDepartment,
     getUserDepartments,
-    getDepartmentPerformance
+    getDepartmentPerformance,
+    getGlobalDashboardStats,
+    getDepartmentRanking,
+    getOverdueIssues,
+    getPublicIssues,
+    getPublicOverdueIssues
 } from "../models/issue.model.js";
 import pool from "../config/db.js";
 
@@ -222,6 +227,12 @@ export const getDepartmentIssues = async (req, res) => {
     try {
         const departmentId = Number(req.params.departmentId);
 
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
+        const status = req.query.status || null;
+
+        const offset = (page - 1) * limit;
+
         // Citizens not allowed
         if (req.user.role === 1) {
             return res.status(403).json({
@@ -229,7 +240,7 @@ export const getDepartmentIssues = async (req, res) => {
             });
         }
 
-        // If Officer (role 3), verify department assignment
+        // Officer restriction
         if (req.user.role === 3) {
             const userDepartments = await getUserDepartments(req.user.id);
 
@@ -240,11 +251,24 @@ export const getDepartmentIssues = async (req, res) => {
             }
         }
 
-        const issues = await getIssuesByDepartment(departmentId);
+        const result = await getIssuesByDepartment(
+            departmentId,
+            limit,
+            offset,
+            status
+        );
+
+        const totalRecords = result.totalRecords;
+        const totalPages = Math.ceil(totalRecords / limit);
 
         return res.status(200).json({
-            count: issues.length,
-            issues,
+            page,
+            limit,
+            total_records: totalRecords,
+            total_pages: totalPages,
+            has_next: page < totalPages,
+            has_prev: page > 1,
+            issues: result.issues,
         });
 
     } catch (error) {
@@ -290,4 +314,119 @@ export const getDepartmentPerformanceStats = async (req, res) => {
             message: "Internal server error",
         });
     }
+};
+
+export const getDashboardOverview = async (req, res) => {
+    try {
+        // Block citizens
+        if (req.user.role === 1) {
+            return res.status(403).json({
+                message: "Forbidden - Citizens cannot access dashboard overview",
+            });
+        }
+
+        const globalStats = await getGlobalDashboardStats();
+        const departmentRanking = await getDepartmentRanking();
+
+        return res.status(200).json({
+            global_stats: globalStats,
+            department_ranking: departmentRanking
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+};
+
+export const getOverdueIssuesList = async (req, res) => {
+    try {
+        // Block citizens
+        if (req.user.role === 1) {
+            return res.status(403).json({
+                message: "Forbidden - Citizens cannot access SLA data",
+            });
+        }
+
+        const overdueIssues = await getOverdueIssues();
+
+        return res.status(200).json({
+            count: overdueIssues.length,
+            overdue_issues: overdueIssues,
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+};
+
+export const getPublicIssuesList = async (req, res) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const status = req.query.status || null;
+
+    const offset = (page - 1) * limit;
+
+    const result = await getPublicIssues(limit, offset, status);
+
+    const totalRecords = result.totalRecords;
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    return res.status(200).json({
+      page,
+      limit,
+      total_records: totalRecords,
+      total_pages: totalPages,
+      has_next: page < totalPages,
+      has_prev: page > 1,
+      issues: result.issues,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error"
+    });
+  }
+};
+
+export const getPublicDashboardOverview = async (req, res) => {
+  try {
+    const globalStats = await getGlobalDashboardStats();
+    const departmentRanking = await getDepartmentRanking();
+
+    return res.status(200).json({
+      global_stats: globalStats,
+      department_ranking: departmentRanking
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error"
+    });
+  }
+};
+
+export const getPublicOverdueIssuesList = async (req, res) => {
+  try {
+    const overdueIssues = await getPublicOverdueIssues();
+
+    return res.status(200).json({
+      count: overdueIssues.length,
+      overdue_issues: overdueIssues,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error"
+    });
+  }
 };

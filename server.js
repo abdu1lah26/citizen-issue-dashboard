@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import pool from "./config/db.js";
 import userRoutes from "./routes/user.routes.js";
 import issueRoutes from "./routes/issue.routes.js";
+import publicRoutes from "./routes/public.routes.js";
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ app.use(express.json());
 // Routes
 app.use("/api/users", userRoutes);
 app.use("/api/issues", issueRoutes);
+app.use("/api/public", publicRoutes);
 
 // Health check route
 app.get("/", (req, res) => {
