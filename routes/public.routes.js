@@ -1,8 +1,9 @@
 import express from "express";
-import { 
-   getPublicIssuesList,
-  getPublicDashboardOverview,
-  getPublicOverdueIssuesList
+import {
+    getPublicIssuesList,
+    getPublicDashboardOverview,
+    getPublicOverdueIssuesList,
+    getPublicHeatmapData
 } from "../controllers/issue.controller.js";
 const router = express.Router();
 
@@ -10,5 +11,6 @@ const router = express.Router();
 router.get("/issues", getPublicIssuesList);
 router.get("/dashboard", getPublicDashboardOverview);
 router.get("/overdue", getPublicOverdueIssuesList);
+router.get("/heatmap", getPublicHeatmapData);
 
 export default router;

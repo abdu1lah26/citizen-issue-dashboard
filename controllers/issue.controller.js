@@ -10,7 +10,8 @@ import {
     getDepartmentRanking,
     getOverdueIssues,
     getPublicIssues,
-    getPublicOverdueIssues
+    getPublicOverdueIssues,
+    getHeatmapData
 } from "../models/issue.model.js";
 import pool from "../config/db.js";
 
@@ -421,6 +422,25 @@ export const getPublicOverdueIssuesList = async (req, res) => {
     return res.status(200).json({
       count: overdueIssues.length,
       overdue_issues: overdueIssues,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error"
+    });
+  }
+};
+
+export const getPublicHeatmapData = async (req, res) => {
+  try {
+    const precision = req.query.precision || 2;
+
+    const heatmapData = await getHeatmapData(precision);
+
+    return res.status(200).json({
+      precision: Number(precision),
+      clusters: heatmapData
     });
 
   } catch (error) {

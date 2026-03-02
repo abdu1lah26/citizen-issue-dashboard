@@ -418,3 +418,22 @@ export const getPublicOverdueIssues = async () => {
 
   return result.rows;
 };
+
+export const getHeatmapData = async () => {
+  const query = `
+    SELECT
+      ROUND(latitude::numeric, 2) AS lat_bucket,
+      ROUND(longitude::numeric, 2) AS lng_bucket,
+      COUNT(*) AS issue_count
+    FROM issues
+    WHERE visibility = true
+      AND latitude IS NOT NULL
+      AND longitude IS NOT NULL
+    GROUP BY lat_bucket, lng_bucket
+    ORDER BY issue_count DESC
+  `;
+
+  const result = await pool.query(query);
+
+  return result.rows;
+};
