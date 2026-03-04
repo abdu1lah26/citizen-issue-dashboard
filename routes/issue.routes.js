@@ -1,6 +1,6 @@
 import express from "express";
 import {
-    reportIssue,
+  reportIssue,
   getMyIssues,
   getIssueDetails,
   changeIssueStatus,
@@ -8,9 +8,12 @@ import {
   getDepartmentIssues,
   getDepartmentPerformanceStats,
   getDashboardOverview,
-  getOverdueIssuesList
+  getOverdueIssuesList,
+  uploadAttachment
 } from "../controllers/issue.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
+import upload from "../middleware/upload.middleware.js";
+
 
 const router = express.Router();
 
@@ -37,6 +40,9 @@ router.get("/department/:departmentId", authenticate, getDepartmentIssues);
 
 // Get issue timeline (status history)
 router.get("/:id/timeline", authenticate, getIssueTimeline);
+
+// Upload attachment for an issue
+router.post("/:id/attachments", authenticate, upload.single("file"), uploadAttachment);
 
 // Get details of a specific issue
 router.get("/:id", authenticate, getIssueDetails);

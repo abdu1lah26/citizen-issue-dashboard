@@ -1,61 +1,68 @@
 import pool from "../config/db.js";
 
 export const createIssue = async (
+  title,
+  description,
+  citizenId,
+  departmentId,
+  latitude,
+  longitude,
+  address,
+  aiData = null
+) => {
+  const query = `
+    INSERT INTO issues 
+    (title, description, citizen_id, department_id, latitude, longitude, address,
+     priority, ai_priority, ai_department_id, ai_confidence, ai_reasoning)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+    RETURNING *
+  `;
+
+  const values = [
     title,
     description,
     citizenId,
     departmentId,
     latitude,
     longitude,
-    address
-) => {
-    const query = `
-    INSERT INTO issues 
-    (title, description, citizen_id, department_id, latitude, longitude, address)
-    VALUES ($1,$2,$3,$4,$5,$6,$7)
-    RETURNING *
-  `;
+    address,
+    aiData?.suggested_priority || 'medium',
+    aiData?.suggested_priority || null,
+    aiData?.suggested_department_id || null,
+    aiData?.confidence || null,
+    aiData?.reasoning || null,
+  ];
 
-    const values = [
-        title,
-        description,
-        citizenId,
-        departmentId,
-        latitude,
-        longitude,
-        address,
-    ];
+  const result = await pool.query(query, values);
 
-    const result = await pool.query(query, values);
-
-    return result.rows[0];
+  return result.rows[0];
 };
 
 export const getIssuesByCitizen = async (citizenId) => {
-    const query = `
+  const query = `
     SELECT * FROM issues
     WHERE citizen_id = $1
     ORDER BY created_at DESC
   `;
 
-    const result = await pool.query(query, [citizenId]);
+  const result = await pool.query(query, [citizenId]);
 
-    return result.rows;
+  return result.rows;
 };
 
 export const getIssueById = async (issueId) => {
-    const query = `
+  const query = `
     SELECT * FROM issues
     WHERE id = $1
   `;
 
-    const result = await pool.query(query, [issueId]);
+  const result = await pool.query(query, [issueId]);
 
-    return result.rows[0];
+  return result.rows[0];
 };
 
 export const updateIssueStatus = async (issueId, newStatus) => {
-    const query = `
+  const query = `
     UPDATE issues
     SET status = $1::issue_status,
         updated_at = CURRENT_TIMESTAMP,
@@ -68,35 +75,35 @@ export const updateIssueStatus = async (issueId, newStatus) => {
     RETURNING *
   `;
 
-    const result = await pool.query(query, [newStatus, issueId]);
+  const result = await pool.query(query, [newStatus, issueId]);
 
-    return result.rows[0];
+  return result.rows[0];
 };
 
 export const insertIssueStatusHistory = async (
-    issueId,
-    oldStatus,
-    newStatus,
-    changedBy,
-    remarks
+  issueId,
+  oldStatus,
+  newStatus,
+  changedBy,
+  remarks
 ) => {
-    const query = `
+  const query = `
     INSERT INTO issue_status_history
     (issue_id, old_status, new_status, changed_by, remarks)
     VALUES ($1, $2, $3, $4, $5)
   `;
 
-    await pool.query(query, [
-        issueId,
-        oldStatus,
-        newStatus,
-        changedBy,
-        remarks,
-    ]);
+  await pool.query(query, [
+    issueId,
+    oldStatus,
+    newStatus,
+    changedBy,
+    remarks,
+  ]);
 };
 
 export const getIssueHistory = async (issueId) => {
-    const query = `
+  const query = `
     SELECT 
       ish.id,
       ish.old_status,
@@ -111,39 +118,39 @@ export const getIssueHistory = async (issueId) => {
     ORDER BY ish.changed_at ASC
   `;
 
-    const result = await pool.query(query, [issueId]);
+  const result = await pool.query(query, [issueId]);
 
-    return result.rows;
+  return result.rows;
 };
 
 export const getIssuesByDepartment = async (
-    departmentId,
-    limit,
-    offset,
-    status
+  departmentId,
+  limit,
+  offset,
+  status
 ) => {
-    let baseCondition = `WHERE department_id = $1`;
-    const values = [departmentId];
-    let paramIndex = 2;
+  let baseCondition = `WHERE department_id = $1`;
+  const values = [departmentId];
+  let paramIndex = 2;
 
-    if (status) {
-        baseCondition += ` AND status = $${paramIndex}`;
-        values.push(status);
-        paramIndex++;
-    }
+  if (status) {
+    baseCondition += ` AND status = $${paramIndex}`;
+    values.push(status);
+    paramIndex++;
+  }
 
-    // 1️⃣ Total count query
-    const countQuery = `
+  // 1️⃣ Total count query
+  const countQuery = `
     SELECT COUNT(*) 
     FROM issues
     ${baseCondition}
   `;
 
-    const countResult = await pool.query(countQuery, values);
-    const totalRecords = Number(countResult.rows[0].count);
+  const countResult = await pool.query(countQuery, values);
+  const totalRecords = Number(countResult.rows[0].count);
 
-    // 2️⃣ Data query
-    const dataQuery = `
+  // 2️⃣ Data query
+  const dataQuery = `
     SELECT *
     FROM issues
     ${baseCondition}
@@ -152,30 +159,30 @@ export const getIssuesByDepartment = async (
     OFFSET $${paramIndex + 1}
   `;
 
-    const dataValues = [...values, limit, offset];
+  const dataValues = [...values, limit, offset];
 
-    const dataResult = await pool.query(dataQuery, dataValues);
+  const dataResult = await pool.query(dataQuery, dataValues);
 
-    return {
-        totalRecords,
-        issues: dataResult.rows,
-    };
+  return {
+    totalRecords,
+    issues: dataResult.rows,
+  };
 };
 
 export const getUserDepartments = async (userId) => {
-    const query = `
+  const query = `
     SELECT department_id
     FROM user_departments
     WHERE user_id = $1
   `;
 
-    const result = await pool.query(query, [userId]);
+  const result = await pool.query(query, [userId]);
 
-    return result.rows.map(row => row.department_id);
+  return result.rows.map(row => row.department_id);
 };
 
 export const getDepartmentPerformance = async (departmentId) => {
-    const query = `
+  const query = `
     SELECT
       COUNT(*) AS total_issues,
 
@@ -192,13 +199,13 @@ export const getDepartmentPerformance = async (departmentId) => {
     WHERE department_id = $1
   `;
 
-    const result = await pool.query(query, [departmentId]);
+  const result = await pool.query(query, [departmentId]);
 
-    return result.rows[0];
+  return result.rows[0];
 };
 
 export const getGlobalDashboardStats = async () => {
-    const query = `
+  const query = `
     SELECT
       COUNT(*) AS total_issues,
 
@@ -214,13 +221,13 @@ export const getGlobalDashboardStats = async () => {
     FROM issues
   `;
 
-    const result = await pool.query(query);
+  const result = await pool.query(query);
 
-    return result.rows[0];
+  return result.rows[0];
 };
 
 export const getDepartmentRanking = async () => {
-    const query = `
+  const query = `
     SELECT
       d.id,
       d.name,
@@ -243,13 +250,13 @@ export const getDepartmentRanking = async () => {
     ORDER BY resolved_issues DESC NULLS LAST
   `;
 
-    const result = await pool.query(query);
+  const result = await pool.query(query);
 
-    return result.rows;
+  return result.rows;
 };
 
 export const getOverdueIssues = async () => {
-    const query = `
+  const query = `
     SELECT
       id,
       title,
@@ -309,9 +316,9 @@ export const getOverdueIssues = async () => {
     ORDER BY hours_overdue DESC
   `;
 
-    const result = await pool.query(query);
+  const result = await pool.query(query);
 
-    return result.rows;
+  return result.rows;
 };
 
 export const getPublicIssues = async (limit, offset, status) => {

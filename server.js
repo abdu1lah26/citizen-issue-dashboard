@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import multer from "multer";
 import pool from "./config/db.js";
 import userRoutes from "./routes/user.routes.js";
 import issueRoutes from "./routes/issue.routes.js";
@@ -19,6 +20,15 @@ app.use(express.json());
 app.use("/api/users", userRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/public", publicRoutes);
+app.use((err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        return res.status(400).json({ message: err.message });
+    }
+    if (err.message.includes("Invalid file type")) {
+        return res.status(400).json({ message: err.message });
+    }
+    next(err);
+});
 
 // Health check route
 app.get("/", (req, res) => {
