@@ -119,7 +119,7 @@ export const reportIssue = async (req, res) => {
       const aiPromise = analyzeIssue(title, description);
 
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("AI Timeout")), 3000)
+        setTimeout(() => reject(new Error("AI Timeout")), 30000)
       );
 
       aiData = await Promise.race([aiPromise, timeout]);

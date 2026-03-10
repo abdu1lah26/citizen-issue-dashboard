@@ -3,7 +3,7 @@ import pool from "../config/db.js";
 
 const ai = new GoogleGenAI({});
 
-const MODEL_NAME = "gemini-1.5-flash";
+const MODEL_NAME = "gemini-2.0-flash";
 const CONFIDENCE_THRESHOLD = 0.6;
 
 async function getDepartments() {
