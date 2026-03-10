@@ -9,11 +9,13 @@ import PublicHeatmap from "./pages/public/PublicHeatmap";
 import PublicOverdue from "./pages/public/PublicOverdue";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import DepartmentIssues from "./pages/admin/DepartmentIssues";
 
 function App() {
   return (
     <Routes>
       {/* Public Routes */}
+      <Route path="/admin/issues" element={<DepartmentIssues />} />
       <Route path="/my-issues" element={<MyIssues />} />
       <Route path="/report" element={<ReportIssue />} />
       <Route path="/login" element={<Login />} />
