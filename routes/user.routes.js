@@ -2,6 +2,7 @@ import express from "express";
 import { registerUser, loginUser } from "../controllers/user.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { authorizeRoles } from "../middleware/role.middleware.js";
+import { getUserDepartments } from "../models/issue.model.js";
 
 const router = express.Router();
 
@@ -16,6 +17,18 @@ router.get("/profile", authenticate, (req, res) => {
         user: req.user,
     });
 });
+
+// Get user's assigned departments
+router.get("/departments", authenticate, async (req, res) => {
+    try {
+        const departments = await getUserDepartments(req.user.id);
+        res.json({ departments });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
 // Admin-only route example
 router.get(
     "/admin-test",

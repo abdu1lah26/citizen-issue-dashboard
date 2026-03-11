@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import API from "../../api/axios";
 
 function ReportIssue() {
@@ -13,6 +13,20 @@ function ReportIssue() {
 
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const res = await API.get("/public/departments");
+        setDepartments(res.data.departments || []);
+      } catch (err) {
+        console.error("Failed to fetch departments", err);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -84,13 +98,21 @@ function ReportIssue() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Department ID</label>
-            <input
-              placeholder="Enter department ID"
+            <label className="form-label">Department</label>
+            <select
+              value={form.department_id}
               onChange={(e) =>
                 setForm({ ...form, department_id: e.target.value })
               }
-            />
+              style={{ padding: "0.5rem", borderRadius: "4px", width: "100%" }}
+            >
+              <option value="">Select a department</option>
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div

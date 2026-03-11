@@ -11,175 +11,176 @@ import {
     getOverdueIssues,
     getPublicIssues,
     getPublicOverdueIssues,
-    getHeatmapData
+    getHeatmapData,
+    getAllDepartments
 } from "../models/issue.model.js";
 import { analyzeIssue } from "../services/ai.service.js";
 import cloudinary from "../config/cloudinary.js";
 import pool from "../config/db.js";
 
 export const uploadAttachment = async (req, res) => {
-  try {
-    const issueId = Number(req.params.id);
+    try {
+        const issueId = Number(req.params.id);
 
-    if (!req.file) {
-      return res.status(400).json({
-        message: "No file uploaded",
-      });
-    }
-
-    // 🔒 Check issue exists
-    const issueCheck = await pool.query(
-      "SELECT id, citizen_id FROM issues WHERE id = $1",
-      [issueId]
-    );
-
-    if (issueCheck.rows.length === 0) {
-      return res.status(404).json({
-        message: "Issue not found",
-      });
-    }
-
-    const issue = issueCheck.rows[0];
-
-    // 🔐 Permission:
-    // Citizen can upload only to their own issue
-    if (req.user.role === 1 && issue.citizen_id !== req.user.id) {
-      return res.status(403).json({
-        message: "Forbidden - Cannot upload to this issue",
-      });
-    }
-
-    // 🚀 Upload to Cloudinary
-    const result = await cloudinary.uploader.upload_stream(
-      {
-        resource_type: "auto",
-        folder: "civic_issues",
-      },
-      async (error, cloudResult) => {
-        if (error) {
-          console.error("Cloudinary Error:", error);
-          return res.status(500).json({
-            message: "Upload failed",
-          });
+        if (!req.file) {
+            return res.status(400).json({
+                message: "No file uploaded",
+            });
         }
 
-        // 💾 Save attachment record
-        const insertQuery = `
+        // 🔒 Check issue exists
+        const issueCheck = await pool.query(
+            "SELECT id, citizen_id FROM issues WHERE id = $1",
+            [issueId]
+        );
+
+        if (issueCheck.rows.length === 0) {
+            return res.status(404).json({
+                message: "Issue not found",
+            });
+        }
+
+        const issue = issueCheck.rows[0];
+
+        // 🔐 Permission:
+        // Citizen can upload only to their own issue
+        if (req.user.role === 1 && issue.citizen_id !== req.user.id) {
+            return res.status(403).json({
+                message: "Forbidden - Cannot upload to this issue",
+            });
+        }
+
+        // 🚀 Upload to Cloudinary
+        const result = await cloudinary.uploader.upload_stream(
+            {
+                resource_type: "auto",
+                folder: "civic_issues",
+            },
+            async (error, cloudResult) => {
+                if (error) {
+                    console.error("Cloudinary Error:", error);
+                    return res.status(500).json({
+                        message: "Upload failed",
+                    });
+                }
+
+                // 💾 Save attachment record
+                const insertQuery = `
           INSERT INTO attachments (issue_id, uploaded_by, file_url, file_type)
           VALUES ($1, $2, $3, $4)
           RETURNING *
         `;
 
-        const values = [
-          issueId,
-          req.user.id,
-          cloudResult.secure_url,
-          req.file.mimetype,
-        ];
+                const values = [
+                    issueId,
+                    req.user.id,
+                    cloudResult.secure_url,
+                    req.file.mimetype,
+                ];
 
-        const dbResult = await pool.query(insertQuery, values);
+                const dbResult = await pool.query(insertQuery, values);
 
-        return res.status(201).json({
-          message: "File uploaded successfully",
-          attachment: dbResult.rows[0],
+                return res.status(201).json({
+                    message: "File uploaded successfully",
+                    attachment: dbResult.rows[0],
+                });
+            }
+        );
+
+        result.end(req.file.buffer);
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Internal server error",
         });
-      }
-    );
-
-    result.end(req.file.buffer);
-
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      message: "Internal server error",
-    });
-  }
+    }
 };
 
 export const reportIssue = async (req, res) => {
-  try {
-    const {
-      title,
-      description,
-      department_id,
-      latitude,
-      longitude,
-      address,
-    } = req.body;
-
-    if (!title || !description || !department_id) {
-      return res.status(400).json({
-        message: "Title, description and department_id are required",
-      });
-    }
-
-    let aiData = null;
-
     try {
-      const aiPromise = analyzeIssue(title, description);
+        const {
+            title,
+            description,
+            department_id,
+            latitude,
+            longitude,
+            address,
+        } = req.body;
 
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("AI Timeout")), 30000)
-      );
+        if (!title || !description || !department_id) {
+            return res.status(400).json({
+                message: "Title, description and department_id are required",
+            });
+        }
 
-      aiData = await Promise.race([aiPromise, timeout]);
+        let aiData = null;
 
-      console.log("AI RESULT:", aiData);
+        try {
+            const aiPromise = analyzeIssue(title, description);
 
-    } catch (aiError) {
-      console.error("AI integration failed:", aiError.message);
+            const timeout = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("AI Timeout")), 30000)
+            );
 
-      aiData = {
-        suggested_priority: "medium",
-        suggested_department_id: null,
-        confidence: 0,
-        reasoning: "AI failed or timed out. Default applied.",
-      };
+            aiData = await Promise.race([aiPromise, timeout]);
+
+            console.log("AI RESULT:", aiData);
+
+        } catch (aiError) {
+            console.error("AI integration failed:", aiError.message);
+
+            aiData = {
+                suggested_priority: "medium",
+                suggested_department_id: null,
+                confidence: 0,
+                reasoning: "AI failed or timed out. Default applied.",
+            };
+        }
+
+        const CONFIDENCE_THRESHOLD = 0.6;
+
+        let finalPriority = "medium";
+
+        if (
+            aiData &&
+            aiData.confidence >= CONFIDENCE_THRESHOLD
+        ) {
+            finalPriority = aiData.suggested_priority;
+        }
+
+        const finalDepartmentId = department_id;
+
+        const newIssue = await createIssue(
+            title,
+            description,
+            req.user.id,
+            finalDepartmentId,
+            latitude,
+            longitude,
+            address,
+            {
+                ...aiData,
+                suggested_priority: finalPriority,
+            }
+        );
+
+        return res.status(201).json({
+            message: "Issue reported successfully",
+            issue: newIssue,
+            ai_suggestion: {
+                priority: aiData?.suggested_priority,
+                department: aiData?.suggested_department_id,
+                confidence: aiData?.confidence,
+            },
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Internal server error",
+        });
     }
-
-    const CONFIDENCE_THRESHOLD = 0.6;
-
-    let finalPriority = "medium";
-
-    if (
-      aiData &&
-      aiData.confidence >= CONFIDENCE_THRESHOLD
-    ) {
-      finalPriority = aiData.suggested_priority;
-    }
-
-    const finalDepartmentId = department_id;
-
-    const newIssue = await createIssue(
-      title,
-      description,
-      req.user.id,
-      finalDepartmentId,
-      latitude,
-      longitude,
-      address,
-      {
-        ...aiData,
-        suggested_priority: finalPriority,
-      }
-    );
-
-    return res.status(201).json({
-      message: "Issue reported successfully",
-      issue: newIssue,
-      ai_suggestion: {
-        priority: aiData?.suggested_priority,
-        department: aiData?.suggested_department_id,
-        confidence: aiData?.confidence,
-      },
-    });
-
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      message: "Internal server error",
-    });
-  }
 };
 
 export const getMyIssues = async (req, res) => {
@@ -567,6 +568,22 @@ export const getPublicHeatmapData = async (req, res) => {
         return res.status(200).json({
             precision: Number(precision),
             clusters: heatmapData
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+};
+
+export const getDepartmentsList = async (req, res) => {
+    try {
+        const departments = await getAllDepartments();
+
+        return res.status(200).json({
+            departments
         });
 
     } catch (error) {

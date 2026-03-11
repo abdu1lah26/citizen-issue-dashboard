@@ -5,13 +5,34 @@ import IssueTimeline from "../../components/IssueTimeline";
 function DepartmentIssues() {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const departmentId = 1; // temporary
+  const [departments, setDepartments] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
 
   useEffect(() => {
-    const fetchIssues = async () => {
+    const fetchDepartments = async () => {
       try {
-        const res = await API.get(`/issues/department/${departmentId}`);
+        const res = await API.get("/users/departments");
+        const depts = res.data.departments || [];
+        setDepartments(depts);
+        if (depts.length > 0) {
+          setSelectedDepartment(depts[0]);
+        }
+      } catch (err) {
+        console.error("Fetch departments failed", err);
+        setLoading(false);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
+
+  useEffect(() => {
+    if (selectedDepartment === null) return;
+
+    const fetchIssues = async () => {
+      setLoading(true);
+      try {
+        const res = await API.get(`/issues/department/${selectedDepartment}`);
         setIssues(res.data.issues);
       } catch (err) {
         console.error("Fetch department issues failed", err);
@@ -21,7 +42,7 @@ function DepartmentIssues() {
     };
 
     fetchIssues();
-  }, []);
+  }, [selectedDepartment]);
 
   const updateStatus = async (issueId, status) => {
     try {
@@ -32,7 +53,7 @@ function DepartmentIssues() {
       alert("Status updated");
 
       // refresh list
-      const res = await API.get(`/issues/department/${departmentId}`);
+      const res = await API.get(`/issues/department/${selectedDepartment}`);
       setIssues(res.data.issues);
     } catch (err) {
       console.error("Status update failed", err);
@@ -62,12 +83,43 @@ function DepartmentIssues() {
   if (loading)
     return <div className="loading">Loading department issues...</div>;
 
+  if (departments.length === 0) {
+    return (
+      <div>
+        <div className="page-header">
+          <h1>Department Issues</h1>
+        </div>
+        <div className="empty-state">
+          <div className="empty-state-title">No Department Assigned</div>
+          <p>You are not assigned to any department.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="page-header">
         <h1>Department Issues</h1>
         <p>Manage and update issues assigned to your department</p>
       </div>
+
+      {departments.length > 1 && (
+        <div className="form-group" style={{ marginBottom: "1.5rem" }}>
+          <label className="form-label">Select Department</label>
+          <select
+            value={selectedDepartment || ""}
+            onChange={(e) => setSelectedDepartment(Number(e.target.value))}
+            style={{ padding: "0.5rem", borderRadius: "4px" }}
+          >
+            {departments.map((deptId) => (
+              <option key={deptId} value={deptId}>
+                Department {deptId}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {issues.length === 0 ? (
         <div className="empty-state">

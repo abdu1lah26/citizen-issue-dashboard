@@ -444,3 +444,15 @@ export const getHeatmapData = async () => {
 
   return result.rows;
 };
+
+export const getAllDepartments = async () => {
+  const query = `
+    SELECT id, name
+    FROM departments
+    ORDER BY name ASC
+  `;
+
+  const result = await pool.query(query);
+
+  return result.rows;
+};
