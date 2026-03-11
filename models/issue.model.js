@@ -262,12 +262,14 @@ export const getOverdueIssues = async () => {
       title,
       priority,
       status,
+      department_id,
       created_at,
 
       EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 
         AS hours_since_created,
 
       CASE
+        WHEN priority = 'critical' THEN 12
         WHEN priority = 'high' THEN 24
         WHEN priority = 'medium' THEN 72
         WHEN priority = 'low' THEN 120
@@ -275,6 +277,7 @@ export const getOverdueIssues = async () => {
 
       (EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) -
       CASE
+        WHEN priority = 'critical' THEN 12
         WHEN priority = 'high' THEN 24
         WHEN priority = 'medium' THEN 72
         WHEN priority = 'low' THEN 120
@@ -284,6 +287,7 @@ export const getOverdueIssues = async () => {
         WHEN (
           (EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) -
           CASE
+            WHEN priority = 'critical' THEN 12
             WHEN priority = 'high' THEN 24
             WHEN priority = 'medium' THEN 72
             WHEN priority = 'low' THEN 120
@@ -293,6 +297,7 @@ export const getOverdueIssues = async () => {
         WHEN (
           (EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) -
           CASE
+            WHEN priority = 'critical' THEN 12
             WHEN priority = 'high' THEN 24
             WHEN priority = 'medium' THEN 72
             WHEN priority = 'low' THEN 120
@@ -306,6 +311,8 @@ export const getOverdueIssues = async () => {
 
     WHERE status != 'resolved'
     AND (
+      (priority = 'critical' AND NOW() > created_at + INTERVAL '12 hours')
+      OR
       (priority = 'high' AND NOW() > created_at + INTERVAL '24 hours')
       OR
       (priority = 'medium' AND NOW() > created_at + INTERVAL '72 hours')
@@ -374,6 +381,7 @@ export const getPublicOverdueIssues = async () => {
         AS hours_since_created,
 
       CASE
+        WHEN priority = 'critical' THEN 12
         WHEN priority = 'high' THEN 24
         WHEN priority = 'medium' THEN 72
         WHEN priority = 'low' THEN 120
@@ -381,6 +389,7 @@ export const getPublicOverdueIssues = async () => {
 
       (EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) -
       CASE
+        WHEN priority = 'critical' THEN 12
         WHEN priority = 'high' THEN 24
         WHEN priority = 'medium' THEN 72
         WHEN priority = 'low' THEN 120
@@ -390,6 +399,7 @@ export const getPublicOverdueIssues = async () => {
         WHEN (
           (EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) -
           CASE
+            WHEN priority = 'critical' THEN 12
             WHEN priority = 'high' THEN 24
             WHEN priority = 'medium' THEN 72
             WHEN priority = 'low' THEN 120
@@ -398,6 +408,7 @@ export const getPublicOverdueIssues = async () => {
         WHEN (
           (EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) -
           CASE
+            WHEN priority = 'critical' THEN 12
             WHEN priority = 'high' THEN 24
             WHEN priority = 'medium' THEN 72
             WHEN priority = 'low' THEN 120
@@ -411,6 +422,8 @@ export const getPublicOverdueIssues = async () => {
     WHERE visibility = true
     AND status != 'resolved'
     AND (
+      (priority = 'critical' AND NOW() > created_at + INTERVAL '12 hours')
+      OR
       (priority = 'high' AND NOW() > created_at + INTERVAL '24 hours')
       OR
       (priority = 'medium' AND NOW() > created_at + INTERVAL '72 hours')
@@ -426,11 +439,11 @@ export const getPublicOverdueIssues = async () => {
   return result.rows;
 };
 
-export const getHeatmapData = async () => {
+export const getHeatmapData = async (precision = 2) => {
   const query = `
     SELECT
-      ROUND(latitude::numeric, 2) AS lat_bucket,
-      ROUND(longitude::numeric, 2) AS lng_bucket,
+      ROUND(latitude::numeric, $1) AS lat_bucket,
+      ROUND(longitude::numeric, $1) AS lng_bucket,
       COUNT(*) AS issue_count
     FROM issues
     WHERE visibility = true
@@ -440,7 +453,7 @@ export const getHeatmapData = async () => {
     ORDER BY issue_count DESC
   `;
 
-  const result = await pool.query(query);
+  const result = await pool.query(query, [precision]);
 
   return result.rows;
 };

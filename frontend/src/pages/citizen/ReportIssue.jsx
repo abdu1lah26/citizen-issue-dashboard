@@ -1,5 +1,29 @@
 import { useState, useEffect } from "react";
 import API from "../../api/axios";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+// Fix Leaflet default icon issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
+
+// Component to handle map clicks
+function LocationPicker({ onLocationSelect }) {
+  useMapEvents({
+    click(e) {
+      onLocationSelect(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
 
 function ReportIssue() {
   const [form, setForm] = useState({
@@ -14,6 +38,7 @@ function ReportIssue() {
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
   const [departments, setDepartments] = useState([]);
+  const [gettingLocation, setGettingLocation] = useState(false);
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -27,6 +52,42 @@ function ReportIssue() {
 
     fetchDepartments();
   }, []);
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setGettingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setForm({
+          ...form,
+          latitude: position.coords.latitude.toFixed(6),
+          longitude: position.coords.longitude.toFixed(6),
+        });
+        setGettingLocation(false);
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        alert(
+          "Unable to get your location. Please select on map or enter manually.",
+        );
+        setGettingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
+  const handleMapLocationSelect = (lat, lng) => {
+    setForm({
+      ...form,
+      latitude: lat.toFixed(6),
+      longitude: lng.toFixed(6),
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -115,29 +176,96 @@ function ReportIssue() {
             </select>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "1rem",
-            }}
-          >
-            <div className="form-group">
-              <label className="form-label">Latitude</label>
-              <input
-                placeholder="e.g. 26.8467"
-                onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-              />
+          <div className="form-group">
+            <label className="form-label">Location</label>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                color: "var(--text-muted)",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Click on the map or use the button below to set location
+            </p>
+
+            <div
+              style={{
+                height: "250px",
+                marginBottom: "1rem",
+                borderRadius: "8px",
+                overflow: "hidden",
+              }}
+            >
+              <MapContainer
+                center={[
+                  form.latitude ? parseFloat(form.latitude) : 26.85,
+                  form.longitude ? parseFloat(form.longitude) : 80.95,
+                ]}
+                zoom={13}
+                style={{ height: "100%", width: "100%" }}
+              >
+                <TileLayer
+                  attribution="&copy; OpenStreetMap contributors"
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <LocationPicker onLocationSelect={handleMapLocationSelect} />
+                {form.latitude && form.longitude && (
+                  <Marker
+                    position={[
+                      parseFloat(form.latitude),
+                      parseFloat(form.longitude),
+                    ]}
+                  />
+                )}
+              </MapContainer>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Longitude</label>
-              <input
-                placeholder="e.g. 80.9462"
-                onChange={(e) =>
-                  setForm({ ...form, longitude: e.target.value })
-                }
-              />
+            <button
+              type="button"
+              onClick={handleGetCurrentLocation}
+              disabled={gettingLocation}
+              className="btn-secondary"
+              style={{ marginBottom: "1rem", width: "100%" }}
+            >
+              {gettingLocation
+                ? "Getting Location..."
+                : "📍 Use My Current Location"}
+            </button>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "1rem",
+              }}
+            >
+              <div>
+                <label className="form-label" style={{ fontSize: "0.8rem" }}>
+                  Latitude
+                </label>
+                <input
+                  value={form.latitude}
+                  placeholder="Auto-filled"
+                  onChange={(e) =>
+                    setForm({ ...form, latitude: e.target.value })
+                  }
+                  style={{ background: "#f9fafb" }}
+                />
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontSize: "0.8rem" }}>
+                  Longitude
+                </label>
+                <input
+                  value={form.longitude}
+                  placeholder="Auto-filled"
+                  onChange={(e) =>
+                    setForm({ ...form, longitude: e.target.value })
+                  }
+                  style={{ background: "#f9fafb" }}
+                />
+              </div>
             </div>
           </div>
 

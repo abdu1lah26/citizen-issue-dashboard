@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 function Register() {
   const { register } = useAuth();
+  const navigate = useNavigate();
 
   const [form, setForm] = useState({
     full_name: "",
@@ -16,7 +18,8 @@ function Register() {
 
     try {
       await register(form);
-      alert("Registration successful");
+      alert("Registration successful! Please login.");
+      navigate("/login");
     } catch (err) {
       alert("Registration failed");
     }
