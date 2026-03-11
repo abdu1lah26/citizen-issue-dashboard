@@ -5,31 +5,38 @@ function Navbar() {
   const { user, logout } = useAuth();
 
   return (
-    <nav style={{ padding: "10px", borderBottom: "1px solid #ccc" }}>
-      <Link to="/">Dashboard</Link> | <Link to="/issues">Issues</Link> |{" "}
-      <Link to="/heatmap">Heatmap</Link> | <Link to="/overdue">Overdue</Link>
-      {user && (
-        <>
-          {" | "}
-          <Link to="/report">Report Issue</Link>
-          {" | "}
-          <Link to="/my-issues">My Issues</Link>
-          {" | "}
-          <Link to="/admin/issues">Department Issues</Link>
-        </>
-      )}
-      <span style={{ float: "right" }}>
+    <nav className="navbar">
+      <Link to="/" className="navbar-brand">
+        Civic Dashboard
+      </Link>
+
+      <div className="navbar-links">
+        <Link to="/">Dashboard</Link>
+        <Link to="/issues">Issues</Link>
+        <Link to="/heatmap">Heatmap</Link>
+        <Link to="/overdue">Overdue</Link>
+        {user && (
+          <>
+            <Link to="/report">Report Issue</Link>
+            <Link to="/my-issues">My Issues</Link>
+            <Link to="/admin/issues">Department Issues</Link>
+          </>
+        )}
+      </div>
+
+      <div className="navbar-user">
         {user ? (
           <>
-            {user.full_name} | <button onClick={logout}>Logout</button>
+            <span className="navbar-user-name">{user.full_name}</span>
+            <button onClick={logout}>Logout</button>
           </>
         ) : (
           <>
-            <Link to="/login">Login</Link> |{" "}
+            <Link to="/login">Login</Link>
             <Link to="/register">Register</Link>
           </>
         )}
-      </span>
+      </div>
     </nav>
   );
 }

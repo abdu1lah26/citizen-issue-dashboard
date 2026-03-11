@@ -10,7 +10,9 @@ function PublicIssues() {
   const fetchIssues = async (pageNumber = 1) => {
     setLoading(true);
     try {
-      const response = await API.get(`/public/issues?page=${pageNumber}&limit=10`);
+      const response = await API.get(
+        `/public/issues?page=${pageNumber}&limit=10`,
+      );
       setIssues(response.data.issues);
       setMeta(response.data);
       setPage(pageNumber);
@@ -25,58 +27,82 @@ function PublicIssues() {
     fetchIssues(1);
   }, []);
 
-  if (loading) return <h2>Loading issues...</h2>;
+  const getStatusBadge = (status) => {
+    const badges = {
+      pending: "badge badge-pending",
+      in_progress: "badge badge-in-progress",
+      resolved: "badge badge-resolved",
+    };
+    return badges[status] || "badge";
+  };
+
+  const getPriorityBadge = (priority) => {
+    const badges = {
+      low: "badge badge-low",
+      medium: "badge badge-medium",
+      high: "badge badge-high",
+      critical: "badge badge-critical",
+    };
+    return badges[priority] || "badge";
+  };
+
+  if (loading) return <div className="loading">Loading issues...</div>;
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Public Issues</h1>
+    <div>
+      <div className="page-header">
+        <h1>Public Issues</h1>
+        <p>Browse all reported civic issues</p>
+      </div>
 
-      {issues.map((issue) => (
-        <div
-          key={issue.id}
-          style={{
-            border: "1px solid #ccc",
-            padding: "15px",
-            marginBottom: "15px",
-            borderRadius: "6px",
-          }}
-        >
-          <h3>{issue.title}</h3>
-          <p>{issue.description}</p>
+      <div className="issue-list">
+        {issues.map((issue) => (
+          <div key={issue.id} className="issue-card">
+            <h3 className="issue-title">{issue.title}</h3>
+            <p className="issue-description">{issue.description}</p>
 
-          <div>Status: {issue.status}</div>
-          <div>Priority: {issue.priority}</div>
-          <div>Department: {issue.department_id}</div>
-
-          <div>
-            Created: {new Date(issue.created_at).toLocaleString()}
-          </div>
-
-          {issue.resolved_at && (
-            <div>
-              Resolved: {new Date(issue.resolved_at).toLocaleString()}
+            <div className="issue-meta">
+              <div className="issue-meta-item">
+                <span className={getStatusBadge(issue.status)}>
+                  {issue.status?.replace("_", " ")}
+                </span>
+              </div>
+              <div className="issue-meta-item">
+                <span className={getPriorityBadge(issue.priority)}>
+                  {issue.priority}
+                </span>
+              </div>
+              <div className="issue-meta-item">Dept: {issue.department_id}</div>
+              <div className="issue-meta-item">
+                Created: {new Date(issue.created_at).toLocaleDateString()}
+              </div>
+              {issue.resolved_at && (
+                <div className="issue-meta-item">
+                  Resolved: {new Date(issue.resolved_at).toLocaleDateString()}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      ))}
+          </div>
+        ))}
+      </div>
 
-      <hr />
-
-      <div style={{ display: "flex", gap: "10px" }}>
+      <div className="pagination">
         <button
           disabled={!meta?.has_prev}
           onClick={() => fetchIssues(page - 1)}
+          className="btn-secondary"
         >
           Previous
         </button>
 
-        <span>
+        <span className="pagination-info">
           Page {meta?.page} of {meta?.total_pages}
         </span>
 
         <button
           disabled={!meta?.has_next}
           onClick={() => fetchIssues(page + 1)}
+          className="btn-secondary"
         >
           Next
         </button>

@@ -17,7 +17,7 @@ ChartJS.register(
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
 );
 
 function PublicDashboard() {
@@ -39,8 +39,8 @@ function PublicDashboard() {
     fetchDashboard();
   }, []);
 
-  if (loading) return <h2>Loading dashboard...</h2>;
-  if (!data) return <h2>Failed to load dashboard</h2>;
+  if (loading) return <div className="loading">Loading dashboard...</div>;
+  if (!data) return <div className="loading">Failed to load dashboard</div>;
 
   const { global_stats, department_ranking } = data;
 
@@ -50,32 +50,74 @@ function PublicDashboard() {
       {
         label: "Resolved Issues",
         data: department_ranking.map(
-          (dept) => Number(dept.resolved_issues) || 0
+          (dept) => Number(dept.resolved_issues) || 0,
         ),
-        backgroundColor: "rgba(54, 162, 235, 0.6)",
+        backgroundColor: "rgba(37, 99, 235, 0.8)",
+        borderRadius: 6,
       },
     ],
   };
 
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        display: false,
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: "rgba(0, 0, 0, 0.05)",
+        },
+      },
+      x: {
+        grid: {
+          display: false,
+        },
+      },
+    },
+  };
+
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Public Dashboard</h1>
+    <div>
+      <div className="page-header">
+        <h1>Public Dashboard</h1>
+        <p>Overview of civic issues across the city</p>
+      </div>
 
-      <h2>Global Stats</h2>
-      <p>Total Issues: {global_stats.total_issues}</p>
-      <p>Resolved: {global_stats.total_resolved}</p>
-      <p>Pending: {global_stats.total_pending}</p>
-      <p>
-        Avg Resolution Hours:{" "}
-        {global_stats.avg_resolution_hours
-          ? Number(global_stats.avg_resolution_hours).toFixed(2)
-          : "N/A"}
-      </p>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-value">{global_stats.total_issues}</div>
+          <div className="stat-label">Total Issues</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value" style={{ color: "var(--success)" }}>
+            {global_stats.total_resolved}
+          </div>
+          <div className="stat-label">Resolved</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value" style={{ color: "var(--warning)" }}>
+            {global_stats.total_pending}
+          </div>
+          <div className="stat-label">Pending</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">
+            {global_stats.avg_resolution_hours
+              ? Number(global_stats.avg_resolution_hours).toFixed(1)
+              : "N/A"}
+          </div>
+          <div className="stat-label">Avg Resolution (hrs)</div>
+        </div>
+      </div>
 
-      <hr />
-
-      <h2>Department Performance (Resolved Issues)</h2>
-      <Bar data={chartData} />
+      <div className="chart-container">
+        <h3 className="chart-title">Department Performance</h3>
+        <Bar data={chartData} options={chartOptions} />
+      </div>
     </div>
   );
 }

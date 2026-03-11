@@ -57,75 +57,103 @@ function ReportIssue() {
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Report Issue</h1>
-
-      <form onSubmit={handleSubmit}>
-        <input
-          placeholder="Title"
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-        />
-
-        <br />
-        <br />
-
-        <textarea
-          placeholder="Description"
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-        />
-
-        <br />
-        <br />
-
-        <input
-          placeholder="Department ID"
-          onChange={(e) => setForm({ ...form, department_id: e.target.value })}
-        />
-
-        <br />
-        <br />
-
-        <input
-          placeholder="Latitude"
-          onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-        />
-
-        <br />
-        <br />
-
-        <input
-          placeholder="Longitude"
-          onChange={(e) => setForm({ ...form, longitude: e.target.value })}
-        />
-
-        <br />
-        <br />
-
-        <input
-          placeholder="Address"
-          onChange={(e) => setForm({ ...form, address: e.target.value })}
-        />
-
-        <br />
-        <br />
-
-        <input type="file" onChange={(e) => setFile(e.target.files[0])} />
-
-        <br />
-        <br />
-
-        <button type="submit">Submit Issue</button>
-      </form>
-
-      {result && (
-        <div style={{ marginTop: "30px" }}>
-          <h2>AI Suggestion</h2>
-
-          <div>Priority: {result.ai_priority}</div>
-          <div>Confidence: {result.ai_confidence}</div>
-          <div>Reason: {result.ai_reasoning}</div>
+    <div className="form-container" style={{ maxWidth: "600px" }}>
+      <div className="form-card">
+        <div className="page-header">
+          <h1>Report an Issue</h1>
+          <p>Help us improve your community by reporting issues</p>
         </div>
-      )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label">Title</label>
+            <input
+              placeholder="Brief title of the issue"
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Description</label>
+            <textarea
+              placeholder="Describe the issue in detail..."
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Department ID</label>
+            <input
+              placeholder="Enter department ID"
+              onChange={(e) =>
+                setForm({ ...form, department_id: e.target.value })
+              }
+            />
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "1rem",
+            }}
+          >
+            <div className="form-group">
+              <label className="form-label">Latitude</label>
+              <input
+                placeholder="e.g. 26.8467"
+                onChange={(e) => setForm({ ...form, latitude: e.target.value })}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Longitude</label>
+              <input
+                placeholder="e.g. 80.9462"
+                onChange={(e) =>
+                  setForm({ ...form, longitude: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Address</label>
+            <input
+              placeholder="Location address"
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Attachment</label>
+            <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+          </div>
+
+          <div className="form-actions">
+            <button type="submit">Submit Issue</button>
+          </div>
+        </form>
+
+        {result && (
+          <div className="ai-suggestion">
+            <div className="ai-suggestion-title">AI Analysis</div>
+            <div className="ai-suggestion-content">
+              <div>
+                <strong>Priority:</strong> {result.ai_priority}
+              </div>
+              <div>
+                <strong>Confidence:</strong> {result.ai_confidence}
+              </div>
+              <div>
+                <strong>Reasoning:</strong> {result.ai_reasoning}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

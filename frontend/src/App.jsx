@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+import Navbar from "./components/Navbar";
 import ReportIssue from "./pages/citizen/ReportIssue";
 import MyIssues from "./pages/citizen/MyIssues";
 
@@ -10,21 +11,50 @@ import PublicOverdue from "./pages/public/PublicOverdue";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import DepartmentIssues from "./pages/admin/DepartmentIssues";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+import "./App.css";
 
 function App() {
   return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/admin/issues" element={<DepartmentIssues />} />
-      <Route path="/my-issues" element={<MyIssues />} />
-      <Route path="/report" element={<ReportIssue />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/" element={<PublicDashboard />} />
-      <Route path="/issues" element={<PublicIssues />} />
-      <Route path="/heatmap" element={<PublicHeatmap />} />
-      <Route path="/overdue" element={<PublicOverdue />} />
-    </Routes>
+    <div className="app-container">
+      <Navbar />
+      <main className="main-content">
+        <Routes>
+          {/* Public Routes */}
+          <Route
+            path="/admin/issues"
+            element={
+              <ProtectedRoute>
+                <DepartmentIssues />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-issues"
+            element={
+              <ProtectedRoute>
+                <MyIssues />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/report"
+            element={
+              <ProtectedRoute>
+                <ReportIssue />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/" element={<PublicDashboard />} />
+          <Route path="/issues" element={<PublicIssues />} />
+          <Route path="/heatmap" element={<PublicHeatmap />} />
+          <Route path="/overdue" element={<PublicOverdue />} />
+        </Routes>
+      </main>
+    </div>
   );
 }
 

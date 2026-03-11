@@ -20,46 +20,83 @@ function MyIssues() {
     fetchIssues();
   }, []);
 
-  if (loading) return <h2>Loading your issues...</h2>;
+  const getStatusBadge = (status) => {
+    const badges = {
+      pending: "badge badge-pending",
+      in_progress: "badge badge-in-progress",
+      resolved: "badge badge-resolved",
+    };
+    return badges[status] || "badge";
+  };
+
+  const getPriorityBadge = (priority) => {
+    const badges = {
+      low: "badge badge-low",
+      medium: "badge badge-medium",
+      high: "badge badge-high",
+      critical: "badge badge-critical",
+    };
+    return badges[priority] || "badge";
+  };
+
+  if (loading) return <div className="loading">Loading your issues...</div>;
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>My Reported Issues</h1>
+    <div>
+      <div className="page-header">
+        <h1>My Reported Issues</h1>
+        <p>Track the status of issues you've reported</p>
+      </div>
 
-      {issues.length === 0 && <p>No issues reported yet.</p>}
-
-      {issues.map((issue) => (
-        <div
-          key={issue.id}
-          style={{
-            border: "1px solid #ccc",
-            padding: "15px",
-            marginBottom: "15px",
-            borderRadius: "6px",
-          }}
-        >
-          <h3>{issue.title}</h3>
-
-          <p>{issue.description}</p>
-
-          <div>Status: {issue.status}</div>
-          <div>Priority: {issue.priority}</div>
-
-          <div>Created: {new Date(issue.created_at).toLocaleString()}</div>
-
-          {issue.resolved_at && (
-            <div>Resolved: {new Date(issue.resolved_at).toLocaleString()}</div>
-          )}
-
-          {issue.ai_priority && (
-            <div style={{ marginTop: "10px" }}>
-              <strong>AI Suggestion</strong>
-              <div>Priority: {issue.ai_priority}</div>
-              <div>Confidence: {issue.ai_confidence}</div>
-            </div>
-          )}
+      {issues.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-title">No Issues Yet</div>
+          <p>You haven't reported any issues yet.</p>
         </div>
-      ))}
+      ) : (
+        <div className="issue-list">
+          {issues.map((issue) => (
+            <div key={issue.id} className="issue-card">
+              <h3 className="issue-title">{issue.title}</h3>
+
+              <p className="issue-description">{issue.description}</p>
+
+              <div className="issue-meta">
+                <div className="issue-meta-item">
+                  <span className={getStatusBadge(issue.status)}>
+                    {issue.status?.replace("_", " ")}
+                  </span>
+                </div>
+                <div className="issue-meta-item">
+                  <span className={getPriorityBadge(issue.priority)}>
+                    {issue.priority}
+                  </span>
+                </div>
+                <div className="issue-meta-item">
+                  Created: {new Date(issue.created_at).toLocaleDateString()}
+                </div>
+                {issue.resolved_at && (
+                  <div className="issue-meta-item">
+                    Resolved: {new Date(issue.resolved_at).toLocaleDateString()}
+                  </div>
+                )}
+              </div>
+
+              {issue.ai_priority && (
+                <div className="ai-suggestion">
+                  <div className="ai-suggestion-title">AI Suggestion</div>
+                  <div className="ai-suggestion-content">
+                    <span>Priority: {issue.ai_priority}</span>
+                    <span style={{ marginLeft: "1rem" }}>
+                      Confidence: {issue.ai_confidence}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

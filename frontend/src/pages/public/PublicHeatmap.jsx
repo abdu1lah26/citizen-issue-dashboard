@@ -34,31 +34,44 @@ function PublicHeatmap() {
     fetchHeatmap();
   }, []);
 
-  if (loading) return <h2>Loading heatmap...</h2>;
+  if (loading) return <div className="loading">Loading heatmap...</div>;
 
   return (
-    <div style={{ height: "90vh", width: "100%" }}>
-      <MapContainer
-        center={[26.85, 80.95]} // Lucknow default (you can adjust)
-        zoom={12}
-        style={{ height: "100%", width: "100%" }}
-      >
-        <TileLayer
-          attribution="&copy; OpenStreetMap contributors"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+    <div>
+      <div className="page-header">
+        <h1>Issue Heatmap</h1>
+        <p>Geographic distribution of reported issues</p>
+      </div>
 
-        {clusters.map((cluster, index) => (
-          <CircleMarker
-            key={index}
-            center={[cluster.lat_bucket, cluster.lng_bucket]}
-            radius={5 + cluster.issue_count}
-            pathOptions={{ color: "red", fillOpacity: 0.5 }}
-          >
-            <Popup>Issues in Area: {cluster.issue_count}</Popup>
-          </CircleMarker>
-        ))}
-      </MapContainer>
+      <div className="map-container" style={{ height: "70vh" }}>
+        <MapContainer
+          center={[26.85, 80.95]}
+          zoom={12}
+          style={{ height: "100%", width: "100%" }}
+        >
+          <TileLayer
+            attribution="&copy; OpenStreetMap contributors"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          {clusters.map((cluster, index) => (
+            <CircleMarker
+              key={index}
+              center={[cluster.lat_bucket, cluster.lng_bucket]}
+              radius={5 + cluster.issue_count}
+              pathOptions={{
+                color: "#ef4444",
+                fillColor: "#ef4444",
+                fillOpacity: 0.6,
+              }}
+            >
+              <Popup>
+                <strong>Issues in Area:</strong> {cluster.issue_count}
+              </Popup>
+            </CircleMarker>
+          ))}
+        </MapContainer>
+      </div>
     </div>
   );
 }
