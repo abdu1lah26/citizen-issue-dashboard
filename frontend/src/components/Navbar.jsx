@@ -20,7 +20,12 @@ function Navbar() {
             <Link to="/report">Report Issue</Link>
             <Link to="/my-issues">My Issues</Link>
             {(user.role === 2 || user.role === 3) && (
-              <Link to="/admin/issues">Department Issues</Link>
+              <>
+                <Link to="/admin/dashboard">Admin Dashboard</Link>
+                <Link to="/admin/issues">Dept Issues</Link>
+                <Link to="/admin/performance">Dept Performance</Link>
+                <Link to="/admin/overdue">Admin Overdue</Link>
+              </>
             )}
           </>
         )}

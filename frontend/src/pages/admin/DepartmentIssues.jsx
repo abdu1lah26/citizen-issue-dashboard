@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import API from "../../api/axios";
 import IssueTimeline from "../../components/IssueTimeline";
 
@@ -130,7 +131,12 @@ function DepartmentIssues() {
         <div className="issue-list">
           {issues.map((issue) => (
             <div key={issue.id} className="issue-card">
-              <h3 className="issue-title">{issue.title}</h3>
+              <Link
+                to={`/issues/${issue.id}`}
+                style={{ textDecoration: "none", color: "inherit" }}
+              >
+                <h3 className="issue-title">{issue.title}</h3>
+              </Link>
 
               <p className="issue-description">{issue.description}</p>
 
