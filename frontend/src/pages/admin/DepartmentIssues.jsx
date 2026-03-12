@@ -17,6 +17,8 @@ function DepartmentIssues() {
         setDepartments(depts);
         if (depts.length > 0) {
           setSelectedDepartment(depts[0]);
+        } else {
+          setLoading(false);
         }
       } catch (err) {
         console.error("Fetch departments failed", err);

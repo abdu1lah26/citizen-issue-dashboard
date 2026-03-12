@@ -61,6 +61,19 @@ export const getIssueById = async (issueId) => {
   return result.rows[0];
 };
 
+export const getIssueAttachments = async (issueId) => {
+  const query = `
+    SELECT id, file_url, file_type, created_at
+    FROM attachments
+    WHERE issue_id = $1
+    ORDER BY created_at ASC
+  `;
+
+  const result = await pool.query(query, [issueId]);
+
+  return result.rows;
+};
+
 export const updateIssueStatus = async (issueId, newStatus) => {
   const query = `
     UPDATE issues

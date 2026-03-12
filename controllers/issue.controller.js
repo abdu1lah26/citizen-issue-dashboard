@@ -2,6 +2,7 @@ import {
     createIssue,
     getIssuesByCitizen,
     getIssueById,
+    getIssueAttachments,
     getIssueHistory,
     getIssuesByDepartment,
     getUserDepartments,
@@ -221,7 +222,10 @@ export const getIssueDetails = async (req, res) => {
             });
         }
 
-        return res.status(200).json(issue);
+        // Get attachments for this issue
+        const attachments = await getIssueAttachments(issueId);
+
+        return res.status(200).json({ ...issue, attachments });
 
     } catch (error) {
         console.error(error);

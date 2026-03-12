@@ -138,6 +138,55 @@ function IssueDetail() {
           </div>
         )}
 
+        {issue.attachments && issue.attachments.length > 0 && (
+          <div style={{ marginTop: "1.5rem" }}>
+            <h3 style={{ marginBottom: "0.5rem" }}>Attachments</h3>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+              {issue.attachments.map((attachment) => (
+                <div key={attachment.id} style={{ maxWidth: "300px" }}>
+                  {attachment.file_type?.startsWith("image/") ? (
+                    <a
+                      href={attachment.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <img
+                        src={attachment.file_url}
+                        alt="Issue attachment"
+                        style={{
+                          width: "100%",
+                          maxHeight: "200px",
+                          objectFit: "cover",
+                          borderRadius: "8px",
+                          border: "1px solid #ddd",
+                        }}
+                      />
+                    </a>
+                  ) : attachment.file_type?.startsWith("video/") ? (
+                    <video
+                      src={attachment.file_url}
+                      controls
+                      style={{
+                        width: "100%",
+                        maxHeight: "200px",
+                        borderRadius: "8px",
+                      }}
+                    />
+                  ) : (
+                    <a
+                      href={attachment.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View Attachment
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div style={{ marginTop: "1.5rem" }}>
           <IssueTimeline issueId={issue.id} />
         </div>

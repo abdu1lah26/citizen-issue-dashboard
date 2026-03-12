@@ -2,7 +2,7 @@ import express from "express";
 import { registerUser, loginUser } from "../controllers/user.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { authorizeRoles } from "../middleware/role.middleware.js";
-import { getUserDepartments } from "../models/issue.model.js";
+import { getUserDepartments, getAllDepartments } from "../models/issue.model.js";
 
 const router = express.Router();
 
@@ -18,9 +18,16 @@ router.get("/profile", authenticate, (req, res) => {
     });
 });
 
-// Get user's assigned departments
+// Get user's assigned departments (admins get all departments)
 router.get("/departments", authenticate, async (req, res) => {
     try {
+        // Admins (role 2) get all departments
+        if (req.user.role === 2) {
+            const allDepts = await getAllDepartments();
+            const departments = allDepts.map(d => d.id);
+            return res.json({ departments });
+        }
+        // Officers (role 3) get only assigned departments
         const departments = await getUserDepartments(req.user.id);
         res.json({ departments });
     } catch (error) {
