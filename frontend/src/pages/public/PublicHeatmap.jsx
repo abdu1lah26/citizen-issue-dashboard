@@ -58,14 +58,31 @@ function PublicHeatmap() {
   const [clusters, setClusters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [precision, setPrecision] = useState(2);
+  const [dateRange, setDateRange] = useState("week");
+  const [departments, setDepartments] = useState([]);
+  const [departmentId, setDepartmentId] = useState("");
+
+  useEffect(() => {
+    // Fetch department list for filter
+    const fetchDepartments = async () => {
+      try {
+        const res = await API.get("/public/departments");
+        setDepartments(res.data.departments || []);
+      } catch (err) {
+        setDepartments([]);
+      }
+    };
+    fetchDepartments();
+  }, []);
 
   useEffect(() => {
     const fetchHeatmap = async () => {
       setLoading(true);
       try {
-        const response = await API.get(
-          `/public/heatmap?precision=${precision}`,
-        );
+        let url = `/public/heatmap?precision=${precision}`;
+        if (dateRange) url += `&dateRange=${dateRange}`;
+        if (departmentId) url += `&departmentId=${departmentId}`;
+        const response = await API.get(url);
         setClusters(response.data.clusters || []);
       } catch (error) {
         console.error("Heatmap fetch error:", error);
@@ -73,9 +90,8 @@ function PublicHeatmap() {
         setLoading(false);
       }
     };
-
     fetchHeatmap();
-  }, [precision]);
+  }, [precision, dateRange, departmentId]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -140,7 +156,38 @@ function PublicHeatmap() {
           gap: "1rem",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <label style={{ fontWeight: 500 }}>Time:</label>
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            style={{
+              padding: "0.5rem",
+              borderRadius: "4px",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+          </select>
+          <label style={{ fontWeight: 500 }}>Category:</label>
+          <select
+            value={departmentId}
+            onChange={(e) => setDepartmentId(e.target.value)}
+            style={{
+              padding: "0.5rem",
+              borderRadius: "4px",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <option value="">All Departments</option>
+            {departments.map((dept) => (
+              <option key={dept.id} value={dept.id}>
+                {dept.name}
+              </option>
+            ))}
+          </select>
           <label style={{ fontWeight: 500 }}>Detail Level:</label>
           <select
             value={precision}

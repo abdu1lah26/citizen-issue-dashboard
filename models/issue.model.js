@@ -63,10 +63,9 @@ export const getIssueById = async (issueId) => {
 
 export const getIssueAttachments = async (issueId) => {
   const query = `
-    SELECT id, file_url, file_type, created_at
+    SELECT id, file_url, file_type
     FROM attachments
     WHERE issue_id = $1
-    ORDER BY created_at ASC
   `;
 
   const result = await pool.query(query, [issueId]);
@@ -142,12 +141,12 @@ export const getIssuesByDepartment = async (
   offset,
   status
 ) => {
-  let baseCondition = `WHERE department_id = $1`;
+  let baseCondition = `WHERE i.department_id = $1`;
   const values = [departmentId];
   let paramIndex = 2;
 
   if (status) {
-    baseCondition += ` AND status = $${paramIndex}`;
+    baseCondition += ` AND i.status = $${paramIndex}`;
     values.push(status);
     paramIndex++;
   }
@@ -155,19 +154,20 @@ export const getIssuesByDepartment = async (
   // 1️⃣ Total count query
   const countQuery = `
     SELECT COUNT(*) 
-    FROM issues
+    FROM issues i
     ${baseCondition}
   `;
 
   const countResult = await pool.query(countQuery, values);
   const totalRecords = Number(countResult.rows[0].count);
 
-  // 2️⃣ Data query
+  // 2️⃣ Data query with department name
   const dataQuery = `
-    SELECT *
-    FROM issues
+    SELECT i.*, d.name AS department_name
+    FROM issues i
+    JOIN departments d ON d.id = i.department_id
     ${baseCondition}
-    ORDER BY created_at DESC
+    ORDER BY i.created_at DESC
     LIMIT $${paramIndex}
     OFFSET $${paramIndex + 1}
   `;
@@ -184,6 +184,21 @@ export const getIssuesByDepartment = async (
 
 export const getUserDepartments = async (userId) => {
   const query = `
+    SELECT ud.department_id AS id, d.name
+    FROM user_departments ud
+    JOIN departments d ON d.id = ud.department_id
+    WHERE ud.user_id = $1
+    ORDER BY d.name ASC
+  `;
+
+  const result = await pool.query(query, [userId]);
+
+  return result.rows;
+};
+
+// Returns just IDs for authorization checks
+export const getUserDepartmentIds = async (userId) => {
+  const query = `
     SELECT department_id
     FROM user_departments
     WHERE user_id = $1
@@ -197,19 +212,24 @@ export const getUserDepartments = async (userId) => {
 export const getDepartmentPerformance = async (departmentId) => {
   const query = `
     SELECT
-      COUNT(*) AS total_issues,
+      d.id AS department_id,
+      d.name AS department_name,
 
-      COUNT(*) FILTER (WHERE status = 'resolved') AS resolved_issues,
+      COUNT(i.id) AS total_issues,
 
-      COUNT(*) FILTER (WHERE status != 'resolved') AS pending_issues,
+      COUNT(i.id) FILTER (WHERE i.status = 'resolved') AS resolved_issues,
+
+      COUNT(i.id) FILTER (WHERE i.status != 'resolved') AS pending_issues,
 
       AVG(
-        EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600
-      ) FILTER (WHERE status = 'resolved') 
+        EXTRACT(EPOCH FROM (i.resolved_at - i.created_at)) / 3600
+      ) FILTER (WHERE i.status = 'resolved') 
       AS avg_resolution_hours
 
-    FROM issues
-    WHERE department_id = $1
+    FROM departments d
+    LEFT JOIN issues i ON i.department_id = d.id
+    WHERE d.id = $1
+    GROUP BY d.id, d.name
   `;
 
   const result = await pool.query(query, [departmentId]);
@@ -271,66 +291,68 @@ export const getDepartmentRanking = async () => {
 export const getOverdueIssues = async () => {
   const query = `
     SELECT
-      id,
-      title,
-      priority,
-      status,
-      department_id,
-      created_at,
+      i.id,
+      i.title,
+      i.priority,
+      i.status,
+      i.department_id,
+      d.name AS department_name,
+      i.created_at,
 
-      EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 
+      EXTRACT(EPOCH FROM (NOW() - i.created_at)) / 3600 
         AS hours_since_created,
 
       CASE
-        WHEN priority = 'critical' THEN 12
-        WHEN priority = 'high' THEN 24
-        WHEN priority = 'medium' THEN 72
-        WHEN priority = 'low' THEN 120
+        WHEN i.priority = 'critical' THEN 12
+        WHEN i.priority = 'high' THEN 24
+        WHEN i.priority = 'medium' THEN 72
+        WHEN i.priority = 'low' THEN 120
       END AS sla_hours,
 
-      (EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) -
+      (EXTRACT(EPOCH FROM (NOW() - i.created_at)) / 3600) -
       CASE
-        WHEN priority = 'critical' THEN 12
-        WHEN priority = 'high' THEN 24
-        WHEN priority = 'medium' THEN 72
-        WHEN priority = 'low' THEN 120
+        WHEN i.priority = 'critical' THEN 12
+        WHEN i.priority = 'high' THEN 24
+        WHEN i.priority = 'medium' THEN 72
+        WHEN i.priority = 'low' THEN 120
       END AS hours_overdue,
 
       CASE
         WHEN (
-          (EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) -
+          (EXTRACT(EPOCH FROM (NOW() - i.created_at)) / 3600) -
           CASE
-            WHEN priority = 'critical' THEN 12
-            WHEN priority = 'high' THEN 24
-            WHEN priority = 'medium' THEN 72
-            WHEN priority = 'low' THEN 120
+            WHEN i.priority = 'critical' THEN 12
+            WHEN i.priority = 'high' THEN 24
+            WHEN i.priority = 'medium' THEN 72
+            WHEN i.priority = 'low' THEN 120
           END
         ) > 48 THEN 'critical'
 
         WHEN (
-          (EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) -
+          (EXTRACT(EPOCH FROM (NOW() - i.created_at)) / 3600) -
           CASE
-            WHEN priority = 'critical' THEN 12
-            WHEN priority = 'high' THEN 24
-            WHEN priority = 'medium' THEN 72
-            WHEN priority = 'low' THEN 120
+            WHEN i.priority = 'critical' THEN 12
+            WHEN i.priority = 'high' THEN 24
+            WHEN i.priority = 'medium' THEN 72
+            WHEN i.priority = 'low' THEN 120
           END
         ) > 12 THEN 'moderate'
 
         ELSE 'minor'
       END AS severity
 
-    FROM issues
+    FROM issues i
+    JOIN departments d ON d.id = i.department_id
 
-    WHERE status != 'resolved'
+    WHERE i.status != 'resolved'
     AND (
-      (priority = 'critical' AND NOW() > created_at + INTERVAL '12 hours')
+      (i.priority = 'critical' AND NOW() > i.created_at + INTERVAL '12 hours')
       OR
-      (priority = 'high' AND NOW() > created_at + INTERVAL '24 hours')
+      (i.priority = 'high' AND NOW() > i.created_at + INTERVAL '24 hours')
       OR
-      (priority = 'medium' AND NOW() > created_at + INTERVAL '72 hours')
+      (i.priority = 'medium' AND NOW() > i.created_at + INTERVAL '72 hours')
       OR
-      (priority = 'low' AND NOW() > created_at + INTERVAL '120 hours')
+      (i.priority = 'low' AND NOW() > i.created_at + INTERVAL '120 hours')
     )
 
     ORDER BY hours_overdue DESC
@@ -342,19 +364,19 @@ export const getOverdueIssues = async () => {
 };
 
 export const getPublicIssues = async (limit, offset, status) => {
-  let baseCondition = `WHERE visibility = true`;
+  let baseCondition = `WHERE i.visibility = true`;
   const values = [];
   let paramIndex = 1;
 
   if (status) {
-    baseCondition += ` AND status = $${paramIndex}`;
+    baseCondition += ` AND i.status = $${paramIndex}`;
     values.push(status);
     paramIndex++;
   }
 
   const countQuery = `
     SELECT COUNT(*)
-    FROM issues
+    FROM issues i
     ${baseCondition}
   `;
 
@@ -362,11 +384,13 @@ export const getPublicIssues = async (limit, offset, status) => {
   const totalRecords = Number(countResult.rows[0].count);
 
   const dataQuery = `
-    SELECT id, title, description, status, priority,
-           department_id, created_at, resolved_at
-    FROM issues
+    SELECT i.id, i.title, i.description, i.status, i.priority,
+           i.department_id, d.name AS department_name,
+           i.created_at, i.resolved_at
+    FROM issues i
+    JOIN departments d ON d.id = i.department_id
     ${baseCondition}
-    ORDER BY created_at DESC
+    ORDER BY i.created_at DESC
     LIMIT $${paramIndex}
     OFFSET $${paramIndex + 1}
   `;
@@ -384,64 +408,66 @@ export const getPublicIssues = async (limit, offset, status) => {
 export const getPublicOverdueIssues = async () => {
   const query = `
     SELECT
-      id,
-      title,
-      priority,
-      department_id,
-      created_at,
+      i.id,
+      i.title,
+      i.priority,
+      i.department_id,
+      d.name AS department_name,
+      i.created_at,
 
-      EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 
+      EXTRACT(EPOCH FROM (NOW() - i.created_at)) / 3600 
         AS hours_since_created,
 
       CASE
-        WHEN priority = 'critical' THEN 12
-        WHEN priority = 'high' THEN 24
-        WHEN priority = 'medium' THEN 72
-        WHEN priority = 'low' THEN 120
+        WHEN i.priority = 'critical' THEN 12
+        WHEN i.priority = 'high' THEN 24
+        WHEN i.priority = 'medium' THEN 72
+        WHEN i.priority = 'low' THEN 120
       END AS sla_hours,
 
-      (EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) -
+      (EXTRACT(EPOCH FROM (NOW() - i.created_at)) / 3600) -
       CASE
-        WHEN priority = 'critical' THEN 12
-        WHEN priority = 'high' THEN 24
-        WHEN priority = 'medium' THEN 72
-        WHEN priority = 'low' THEN 120
+        WHEN i.priority = 'critical' THEN 12
+        WHEN i.priority = 'high' THEN 24
+        WHEN i.priority = 'medium' THEN 72
+        WHEN i.priority = 'low' THEN 120
       END AS hours_overdue,
 
       CASE
         WHEN (
-          (EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) -
+          (EXTRACT(EPOCH FROM (NOW() - i.created_at)) / 3600) -
           CASE
-            WHEN priority = 'critical' THEN 12
-            WHEN priority = 'high' THEN 24
-            WHEN priority = 'medium' THEN 72
-            WHEN priority = 'low' THEN 120
+            WHEN i.priority = 'critical' THEN 12
+            WHEN i.priority = 'high' THEN 24
+            WHEN i.priority = 'medium' THEN 72
+            WHEN i.priority = 'low' THEN 120
           END
         ) > 48 THEN 'critical'
         WHEN (
-          (EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) -
+          (EXTRACT(EPOCH FROM (NOW() - i.created_at)) / 3600) -
           CASE
-            WHEN priority = 'critical' THEN 12
-            WHEN priority = 'high' THEN 24
-            WHEN priority = 'medium' THEN 72
-            WHEN priority = 'low' THEN 120
+            WHEN i.priority = 'critical' THEN 12
+            WHEN i.priority = 'high' THEN 24
+            WHEN i.priority = 'medium' THEN 72
+            WHEN i.priority = 'low' THEN 120
           END
         ) > 12 THEN 'moderate'
         ELSE 'minor'
       END AS severity
 
-    FROM issues
+    FROM issues i
+    JOIN departments d ON d.id = i.department_id
 
-    WHERE visibility = true
-    AND status != 'resolved'
+    WHERE i.visibility = true
+    AND i.status != 'resolved'
     AND (
-      (priority = 'critical' AND NOW() > created_at + INTERVAL '12 hours')
+      (i.priority = 'critical' AND NOW() > i.created_at + INTERVAL '12 hours')
       OR
-      (priority = 'high' AND NOW() > created_at + INTERVAL '24 hours')
+      (i.priority = 'high' AND NOW() > i.created_at + INTERVAL '24 hours')
       OR
-      (priority = 'medium' AND NOW() > created_at + INTERVAL '72 hours')
+      (i.priority = 'medium' AND NOW() > i.created_at + INTERVAL '72 hours')
       OR
-      (priority = 'low' AND NOW() > created_at + INTERVAL '120 hours')
+      (i.priority = 'low' AND NOW() > i.created_at + INTERVAL '120 hours')
     )
 
     ORDER BY hours_overdue DESC
@@ -452,22 +478,43 @@ export const getPublicOverdueIssues = async () => {
   return result.rows;
 };
 
-export const getHeatmapData = async (precision = 2) => {
+export const getHeatmapData = async (precision = 2, dateRange = null, departmentId = null) => {
+  let whereClauses = [
+    'visibility = true',
+    'latitude IS NOT NULL',
+    'longitude IS NOT NULL'
+  ];
+  const values = [precision];
+  let paramIdx = 2;
+
+  if (dateRange) {
+    if (dateRange === 'today') {
+      whereClauses.push(`created_at >= CURRENT_DATE`);
+    } else if (dateRange === 'week') {
+      whereClauses.push(`created_at >= CURRENT_DATE - INTERVAL '7 days'`);
+    } else if (dateRange === 'month') {
+      whereClauses.push(`created_at >= CURRENT_DATE - INTERVAL '1 month'`);
+    }
+  }
+  if (departmentId) {
+    whereClauses.push(`department_id = $${paramIdx}`);
+    values.push(departmentId);
+    paramIdx++;
+  }
+
+  const where = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
   const query = `
     SELECT
       ROUND(latitude::numeric, $1) AS lat_bucket,
       ROUND(longitude::numeric, $1) AS lng_bucket,
       COUNT(*) AS issue_count
     FROM issues
-    WHERE visibility = true
-      AND latitude IS NOT NULL
-      AND longitude IS NOT NULL
+    ${where}
     GROUP BY lat_bucket, lng_bucket
     ORDER BY issue_count DESC
   `;
 
-  const result = await pool.query(query, [precision]);
-
+  const result = await pool.query(query, values);
   return result.rows;
 };
 

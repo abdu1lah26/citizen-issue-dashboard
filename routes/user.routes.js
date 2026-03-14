@@ -23,8 +23,7 @@ router.get("/departments", authenticate, async (req, res) => {
     try {
         // Admins (role 2) get all departments
         if (req.user.role === 2) {
-            const allDepts = await getAllDepartments();
-            const departments = allDepts.map(d => d.id);
+            const departments = await getAllDepartments();
             return res.json({ departments });
         }
         // Officers (role 3) get only assigned departments

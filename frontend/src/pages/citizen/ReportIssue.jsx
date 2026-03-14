@@ -34,11 +34,79 @@ function ReportIssue() {
     longitude: "",
     address: "",
   });
+  // AI triage states
+  const [phase, setPhase] = useState("upload"); // 'upload' | 'analyzing' | 'reviewed'
+  const [aiResult, setAiResult] = useState(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    category: "",
+    department: "",
+    severity: "",
+    description: "",
+  });
 
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [gettingLocation, setGettingLocation] = useState(false);
+
+  // Helper: convert file to base64
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Helper: animate field fill (optional, can be replaced with direct set)
+  const animateFieldFill = async (data) => {
+    // Use data.data if present (backend returns { success, data })
+    const ai = data.data || data;
+    setFormData({
+      title: "",
+      category: "",
+      department: "",
+      severity: "",
+      description: "",
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    setFormData((prev) => ({ ...prev, title: ai.title || "" }));
+    await new Promise((r) => setTimeout(r, 300));
+    setFormData((prev) => ({ ...prev, category: ai.category || "" }));
+    await new Promise((r) => setTimeout(r, 300));
+    setFormData((prev) => ({ ...prev, department: ai.department || "" }));
+    await new Promise((r) => setTimeout(r, 300));
+    setFormData((prev) => ({ ...prev, severity: ai.severity || "" }));
+    await new Promise((r) => setTimeout(r, 300));
+    setFormData((prev) => ({ ...prev, description: ai.description || "" }));
+  };
+
+  // AI triage handler
+  const handleImageUpload = async (file) => {
+    setPhase("analyzing"); // show loading skeleton
+    const base64 = await fileToBase64(file);
+    const mimeType = file.type;
+    const result = await fetch("/api/analyze-issue", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: base64, mimeType }),
+    });
+    const data = await result.json();
+    await animateFieldFill(data);
+    setAiResult(data);
+    setPhase("reviewed");
+    // Optionally auto-fill main form
+    setForm((prev) => ({
+      ...prev,
+      title: data.title || prev.title,
+      description: data.description || prev.description,
+      department_id:
+        departments.find((d) => d.name === data.department)?.id ||
+        prev.department_id,
+    }));
+  };
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -141,31 +209,13 @@ function ReportIssue() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Title</label>
-            <input
-              placeholder="Brief title of the issue"
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Description</label>
-            <textarea
-              placeholder="Describe the issue in detail..."
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
-            />
-          </div>
-
-          <div className="form-group">
             <label className="form-label">Department</label>
             <select
               value={form.department_id}
               onChange={(e) =>
                 setForm({ ...form, department_id: e.target.value })
               }
-              style={{ padding: "0.5rem", borderRadius: "4px", width: "100%" }}
+              required
             >
               <option value="">Select a department</option>
               {departments.map((dept) => (
@@ -279,7 +329,98 @@ function ReportIssue() {
 
           <div className="form-group">
             <label className="form-label">Attachment</label>
-            <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+            <input
+              type="file"
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                setFile(file);
+                if (file) {
+                  await handleImageUpload(file);
+                }
+              }}
+            />
+            {phase === "analyzing" && (
+              <div style={{ marginTop: "0.5rem" }}>
+                <div className="skeleton-field">
+                  <label>Category</label>
+                  <div
+                    className="pulse-bar"
+                    style={{
+                      height: 16,
+                      width: 120,
+                      borderRadius: 6,
+                      background: "#e5e7eb",
+                      animation: "pulse 1.2s infinite",
+                    }}
+                  />
+                </div>
+                <style>{`
+                  @keyframes pulse {
+                    0% { opacity: 0.6; }
+                    50% { opacity: 1; }
+                    100% { opacity: 0.6; }
+                  }
+                  .pulse-bar {
+                    animation: pulse 1.2s infinite;
+                  }
+                `}</style>
+              </div>
+            )}
+            {phase === "reviewed" && aiResult && (
+              <div className="ai-suggestion" style={{ marginTop: "1rem" }}>
+                <div className="ai-suggestion-title">AI Triage Result</div>
+                <div className="ai-suggestion-content">
+                  {typeof aiResult.confidence === "number" &&
+                    aiResult.confidence < 0.6 && (
+                      <div
+                        className="warning-banner"
+                        style={{
+                          background: "#fff3cd",
+                          color: "#856404",
+                          padding: "8px",
+                          borderRadius: "6px",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        ⚠️ AI wasn't confident about this one.
+                        <br />
+                        Please verify the fields before submitting.
+                      </div>
+                    )}
+                  {typeof aiResult.confidence === "number" &&
+                    aiResult.confidence >= 0.6 && (
+                      <div
+                        className="success-banner"
+                        style={{
+                          background: "#d4edda",
+                          color: "#155724",
+                          padding: "8px",
+                          borderRadius: "6px",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        ✅ AI analyzed with{" "}
+                        {Math.round(aiResult.confidence * 100)}% confidence
+                      </div>
+                    )}
+                  <div>
+                    <strong>Title:</strong> {formData.title}
+                  </div>
+                  <div>
+                    <strong>Category:</strong> {formData.category}
+                  </div>
+                  <div>
+                    <strong>Department:</strong> {formData.department}
+                  </div>
+                  <div>
+                    <strong>Severity:</strong> {formData.severity}
+                  </div>
+                  <div>
+                    <strong>Description:</strong> {formData.description}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="form-actions">

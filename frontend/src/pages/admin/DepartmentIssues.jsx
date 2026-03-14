@@ -16,7 +16,7 @@ function DepartmentIssues() {
         const depts = res.data.departments || [];
         setDepartments(depts);
         if (depts.length > 0) {
-          setSelectedDepartment(depts[0]);
+          setSelectedDepartment(depts[0].id);
         } else {
           setLoading(false);
         }
@@ -115,9 +115,9 @@ function DepartmentIssues() {
             onChange={(e) => setSelectedDepartment(Number(e.target.value))}
             style={{ padding: "0.5rem", borderRadius: "4px" }}
           >
-            {departments.map((deptId) => (
-              <option key={deptId} value={deptId}>
-                Department {deptId}
+            {departments.map((dept) => (
+              <option key={dept.id} value={dept.id}>
+                {dept.name}
               </option>
             ))}
           </select>
