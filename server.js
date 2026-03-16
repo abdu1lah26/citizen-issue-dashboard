@@ -49,6 +49,18 @@ app.get("/", (req, res) => {
     res.status(200).json({ message: "Citizen Issue Backend Running" });
 });
 
+app.get("/health/db", async (req, res) => {
+    try {
+        await pool.query("SELECT 1");
+        return res.status(200).json({ message: "Database reachable" });
+    } catch (error) {
+        return res.status(503).json({
+            message: "Database unreachable",
+            error: error.message,
+        });
+    }
+});
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {

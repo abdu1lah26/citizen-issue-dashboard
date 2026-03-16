@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "db:init": "node scripts/init-schema.js",
     "seed:demo": "node scripts/seed-demo-data.js",
     "seed:demo:heavy": "node scripts/seed-demo-data.js --issues=1200 --citizens=120 --officers=20 --daysBack=180"
   },
