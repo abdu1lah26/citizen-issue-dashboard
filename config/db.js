@@ -5,10 +5,16 @@ dotenv.config();
 
 const { Pool } = pg;
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRESQL_URL ||
+    process.env.PG_URL;
 
 if (!databaseUrl) {
-    throw new Error("DATABASE_URL is required");
+    throw new Error(
+        "Missing database URL. Set one of: DATABASE_URL, POSTGRES_URL, POSTGRESQL_URL, PG_URL"
+    );
 }
 
 const shouldUseSsl =
